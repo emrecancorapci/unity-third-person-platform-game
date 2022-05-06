@@ -1,36 +1,38 @@
-using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace Player
 {
     public class MovementController : MonoBehaviour
     {
-        private const double BottomFlagLength = 0.2;
+        private const double BottomFlagLength = 0.3;
 
         [SerializeField]
-        private float MovementSpeed;
+        private float movementSpeed;
         [SerializeField]
-        private float MovementRotationSpeed;
+        private float directionChangeSpeed;
         [SerializeField]
         private float bodyRotationSpeed;
         [SerializeField]
-        private float JumpForce;
-        [SerializeField]
-        private float ShiftBoost;
+        private List<float> jumpForces;
+        [SerializeField] [Range(1,3)]
+        private float sprintMultiplier;
         
-        private InputController input;
-        private Rigidbody body;
-        private Animator animator;
-        private Transform camTransform;
+        private InputController _input;
+        private Rigidbody _rigidbody;
+        private Animator _animator;
+        private Transform _camTransform;
 
-        private Vector3 movementVector = Vector3.zero;
-        private Vector2 movementInput;
+        private Vector3 _movementVector = Vector3.zero;
+        private Vector2 _movementInput;
 
-        private bool isRunning => movementInput.magnitude != 0;
-        private bool isGround;
-        private bool isWalkable;
+        private float _currentSpeed;
+        private int _jumpCount = 0;
+        
+        private bool IsRunning => _movementInput.magnitude != 0;
+        private bool _onGround;
+        private bool _onWalkableEnvironment;
         
         private static readonly int BIsRunning = Animator.StringToHash("b_isRunning");
         private static readonly int BIsJumping = Animator.StringToHash("b_isJumping");
@@ -38,69 +40,80 @@ namespace Player
 
         private void Awake()
         {
-            animator = GetComponent<Animator>();
-            body = GetComponent<Rigidbody>();
-            camTransform = Camera.main.transform;
+            _animator = GetComponent<Animator>();
+            _rigidbody = GetComponent<Rigidbody>();
+            _camTransform = Camera.main.transform;
+
+            _currentSpeed = movementSpeed;
             
-            input = new InputController();
-            input.Enable();
+            _input = new InputController();
+            _input.Enable();
 
             InputHandler();
             AnimationHandler();
         }
         private void InputHandler()
         {
-            Debug.Log("InputHandler created.");
-            input.Player.WASD.performed += context => movementInput = context.ReadValue<Vector2>();
-            input.Player.Shift.started += _ => MovementSpeed += ShiftBoost;
-            input.Player.Shift.canceled += _ => MovementSpeed -= ShiftBoost;
-            input.Player.Space.started += _ =>
-            {
-                if (isGround || isWalkable) PlayerJump();
-            };
+            _input.Player.WASD.performed += context => _movementInput = context.ReadValue<Vector2>();
+            _input.Player.Shift.started += _ => _currentSpeed = movementSpeed * sprintMultiplier;
+            _input.Player.Shift.canceled += _ => _currentSpeed = movementSpeed;
+            _input.Player.Space.started += _ => OnJump();
         }
         private void AnimationHandler()
         {
-            input.Player.WASD.performed += _ => animator.SetBool(BIsRunning, isRunning); Debug.Log("WASD");
-            input.Player.Shift.performed += _ => animator.SetBool(BIsSprinting, true);
-            input.Player.Shift.canceled += _ => animator.SetBool(BIsSprinting, false);
-            input.Player.Space.performed += _ =>
-            { if (isGround || isWalkable) animator.SetBool(BIsJumping, true); };
+            _input.Player.WASD.performed += _ => _animator.SetBool(BIsRunning, IsRunning);
+            _input.Player.Shift.performed += _ => _animator.SetBool(BIsSprinting, true);
+            _input.Player.Shift.canceled += _ => _animator.SetBool(BIsSprinting, false);
+            _input.Player.Space.performed += _ => 
+                { if (_onGround || _onWalkableEnvironment) _animator.SetBool(BIsJumping, true); };
         }
         private void FixedUpdate()
         {
-            PlayerMovement();
-            PlayerRotation();
+            HandleMovement();
+            HandleRotation();
         }
-        private void PlayerMovement()
+        private void HandleMovement()
         {
-            Vector3 targetVector = (camTransform.forward * movementInput.y
-                                    + camTransform.right * movementInput.x).normalized;
-            targetVector = new Vector3(targetVector.x, 0, targetVector.z);
-            movementVector = Vector3.Slerp(movementVector, targetVector, 
-                                           Time.fixedDeltaTime * MovementRotationSpeed);
-            transform.position += movementVector * (MovementSpeed * Time.fixedDeltaTime);
+            Vector3 direction = (_camTransform.forward * _movementInput.y + _camTransform.right * _movementInput.x);
+            direction = new Vector3(direction.x, 0, direction.z).normalized;
+            
+            _movementVector = Vector3.Slerp(_movementVector, direction, Time.fixedDeltaTime * directionChangeSpeed);
+            
+            transform.position += _movementVector * (_currentSpeed * Time.fixedDeltaTime);
         }
-        private void PlayerRotation()
+        private void HandleRotation()
         {
-            float targetX = camTransform.forward.x * movementInput.y + camTransform.right.x * movementInput.x;
-            float targetZ = camTransform.forward.z * movementInput.y + camTransform.right.z * movementInput.x;
+            Vector3 camForward = _camTransform.forward;
+            Vector3 camRight = _camTransform.right;
+            
+            float targetX = camForward.x * _movementInput.y + camRight.x * _movementInput.x;
+            float targetZ = camForward.z * _movementInput.y + camRight.z * _movementInput.x;
+            
             Vector3 targetDirection = new Vector3(targetX, 0, targetZ).normalized;
             
             transform.forward = Vector3.Slerp(transform.forward, targetDirection,
                                              bodyRotationSpeed * Time.fixedDeltaTime);
         }
         
-        private void PlayerJump() => body.AddForce(Vector3.up * JumpForce * body.mass, ForceMode.Impulse);
-        
+        private void OnJump()
+        {
+            if (_onGround || _onWalkableEnvironment)
+            {
+                int jumpType = _jumpCount % jumpForces.Count;
+                _rigidbody.AddForce(Vector3.up * jumpForces[jumpType] * _rigidbody.mass, ForceMode.Impulse);
+                _jumpCount++;
+            }
+                
+        }
+
         private void OnCollisionEnter(Collision other)
         {
             Debug.Log("Col enter : " + other.gameObject.tag);
 
             if (other.gameObject.CompareTag("Ground"))
             {
-                isGround = true;
-                animator.SetBool(BIsJumping, false);
+                _onGround = true;
+                _animator.SetBool(BIsJumping, false);
             }
             
             else if (other.gameObject.CompareTag("Walkable"))
@@ -109,8 +122,8 @@ namespace Player
                     .Any(contactPoint => contactPoint.point.y < transform.position.y + BottomFlagLength);
                 if (!isLandedOn) return;
                 
-                isWalkable = true;
-                animator.SetBool(BIsJumping, false);
+                _onWalkableEnvironment = true;
+                _animator.SetBool(BIsJumping, false);
             }
             
         }
@@ -119,10 +132,10 @@ namespace Player
         {
             Debug.Log("Col exit : " + other.gameObject.tag);
             if (other.gameObject.CompareTag("Ground"))
-                isGround = false;
+                _onGround = false;
 
             else if (other.gameObject.CompareTag("Walkable"))
-                isWalkable = false;
+                _onWalkableEnvironment = false;
         }
     }
 }
