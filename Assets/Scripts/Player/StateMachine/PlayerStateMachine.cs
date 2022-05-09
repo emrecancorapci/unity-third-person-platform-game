@@ -6,6 +6,9 @@ namespace Player.StateMachine
 {
     public class PlayerStateMachine : MonoBehaviour
     {
+        public ParticleSystem walkParticle;
+        public ParticleSystem jumpParticle;
+        [Header("Movement")]
         public float movementSpeed;
         [SerializeField] private float directionChangeSpeed;
         [SerializeField] private float bodyRotationSpeed;
@@ -109,10 +112,9 @@ namespace Player.StateMachine
 
             else if (other.gameObject.CompareTag("Walkable"))
             {
-                double bottomFlagPosition = transform.position.y + BottomFlagLength;
                 bool collidedFromBottom = 
                     other.contacts
-                    .Any(contactPoint => contactPoint.point.y < bottomFlagPosition);
+                    .Any(contactPoint => contactPoint.point.y < transform.position.y + BottomFlagLength);
 
                 if (!collidedFromBottom) return;
                 

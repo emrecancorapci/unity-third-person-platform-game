@@ -5,12 +5,13 @@ namespace Player.StateMachine
         public PlayerGroundedState(PlayerStateMachine currentPlayer, PlayerStateFactory playerStateFactory)
             : base(currentPlayer, playerStateFactory) => IsBaseState = true;
 
-        public override void EnterState() { }
-
+        public override void EnterState()
+        {
+            if (Player.IsRunning)
+                Player.walkParticle.Play();
+        }
         protected override void UpdateState() => CheckTransition();
-
         protected override void ExitState() { }
-
         public override void CheckTransition()
         {
             if (Player.IsJumpPressed)

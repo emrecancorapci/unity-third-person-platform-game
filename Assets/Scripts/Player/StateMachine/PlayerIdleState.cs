@@ -9,12 +9,10 @@ namespace Player.StateMachine
         { 
             Player.PlayerAnimator.SetBool(Player.IsRunningHash, false);
             Player.PlayerAnimator.SetBool(Player.IsSprintingHash, false);
+            Player.walkParticle.Stop();
         }
-
         protected override void UpdateState() => CheckTransition();
-
         protected override void ExitState() { }
-
         public override void CheckTransition()
         {
             if (Player.IsRunning)

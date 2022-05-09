@@ -9,13 +9,13 @@ namespace Player.StateMachine
             Player.PlayerAnimator.SetBool(Player.IsRunningHash, true);
             Player.PlayerAnimator.SetBool(Player.IsSprintingHash, true);
             
+            if (Player.OnGround)
+                Player.walkParticle.Play();
+            
             Player.CurrentSpeed = Player.movementSpeed * Player.sprintMultiplier;
         }
-
         protected override void UpdateState() => CheckTransition();
-
         protected override void ExitState() { }
-
         public override void CheckTransition()
         {
             switch (Player.IsRunning)
@@ -28,7 +28,6 @@ namespace Player.StateMachine
                     break;
             }
         }
-
         public override void InitSubState() { }
     }
 }

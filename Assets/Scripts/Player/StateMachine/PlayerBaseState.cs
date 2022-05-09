@@ -27,7 +27,6 @@ namespace Player.StateMachine
             UpdateState();
             _currentSubState?.UpdateState();
         }
-
         protected void SwitchState(PlayerBaseState newState)
         {
             ExitState();
@@ -38,12 +37,10 @@ namespace Player.StateMachine
             else
                 Player.CurrentState.SetSubState(newState);
         }
-
         private void SetMainState(PlayerBaseState newMainState)
         {
             _currentMainState = newMainState;
         }
-
         protected void SetSubState(PlayerBaseState newSubState)
         {
             _currentSubState = newSubState;

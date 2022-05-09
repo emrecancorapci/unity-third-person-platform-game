@@ -10,6 +10,8 @@ namespace Player.StateMachine
         public override void EnterState()
         {
             Player.PlayerAnimator.SetBool(Player.IsJumpingHash, true);
+            Player.walkParticle.Stop();
+            Player.jumpParticle.Play();
             
             int jumpType = Player.JumpCount % Player.jumpForces.Count;
             float jumpForce = Player.jumpForces[jumpType] * Player.Rigid.mass;
